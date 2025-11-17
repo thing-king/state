@@ -393,8 +393,26 @@ proc flushUpdates(ctx: StateContext) =
   if ctx.disposed:
     return
   
-  # Process computed signals first
-  ctx.updateQueue.clear()
+  # Propagate dirty flags from computed signals to their subscribers
+  while ctx.updateQueue.len > 0:
+    let queue = toSeq(ctx.updateQueue)
+    ctx.updateQueue.clear()
+    
+    for sigId in queue:
+      if sigId in ctx.signalBases:
+        let sig = ctx.signalBases[sigId]
+        # Mark all subscribers of this dirty computed as dirty too
+        for subId in sig.subscribers:
+          if subId in ctx.signalBases:
+            let sub = ctx.signalBases[subId]
+            if not sub.dirty:
+              sub.dirty = true
+              ctx.updateQueue.incl(subId)
+          elif subId in ctx.effects:
+            let effect = ctx.effects[subId]
+            if not effect.dirty:
+              effect.dirty = true
+              ctx.effectQueue.incl(subId)
   
   # Then run effects
   while ctx.effectQueue.len > 0:
