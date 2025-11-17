@@ -553,3 +553,6 @@ proc context*[T](signal: Signal[T]): StateContext =
 proc context*(effect: EffectSignal): StateContext =
   ## Get the context that owns this effect
   effect.ctx
+
+
+converter toValue*[T](s: Signal[T]): T = s.get()
